@@ -1,2 +1,1 @@
-# goNazaV2Interface
-# goNazaV2Interface
+# Go DJI NazaV2 Interface

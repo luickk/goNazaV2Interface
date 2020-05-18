@@ -2,19 +2,21 @@ package goNazaV2Interface
 
 import(
   "time"
+  "goNazaV2Interface/go-pca9685"
 )
 
 type interfaceConfig struct {
   StickDir string
+  pca *PCA9685
 
   // key: channel, value: stick max pos
   LeftStickMaxPos map[int]int
   RightStickMaxPos map[int]int
   NeutralStickPos map[int]int
 
-  GpsModeFlipSwitchPulse int
-  FailsafeModeFlipSwitchPulse int
-  SelectableModeFlipSwitchPulse int
+  GpsModeFlipSwitchDutyCycle int
+  FailsafeModeFlipSwitchDutyCycle int
+  SelectableModeFlipSwitchDutyCycle int
 }
 
 // pca9685 channel enums
@@ -31,6 +33,23 @@ const(
   Uchannel = 5
 )
 
+func InitI2CPca9685() *PCA9685 {
+  // Create new connection to i2c-bus on 1 line with address 0x40.
+  // Use i2cdetect utility to find device address over the i2c-bus
+  i2c, err := i2c.NewI2C(pca9685.Address, 1)
+  if err != nil {
+      log.Fatal(err)
+  }
+
+  pca0 := pca9685.PCANew(i2c, nil)
+  err = pca0.Init()
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  return pca0
+}
+
 /**
     init_naza requires the drone NOT to be in the air!
 		ONLY USE ON GROUND!
@@ -43,7 +62,7 @@ func InitNaza(iC *interfaceConfig){
 	println( "E Channel " + string(Echannel) + " PWM Values " + "left: " + string(iC.LeftStickMaxPos[Echannel]) + " middle: " + string(iC.NeutralStickPos[Echannel]) + " right: " + string(iC.RightStickMaxPos[Echannel]))
 	println( "T Channel " + string(Tchannel) + " PWM Values " + "left: " + string(iC.LeftStickMaxPos[Tchannel]) + " right: " + string(iC.RightStickMaxPos[Tchannel]))
 	println( "R Channel " + string(Rchannel) + " PWM Values " + "left: " + string(iC.LeftStickMaxPos[Rchannel]) + " middle: " + string(iC.NeutralStickPos[Rchannel]) + " right: " + string(iC.RightStickMaxPos[Rchannel]))
-	println( "U Channel " + string(Uchannel) + " PWM Values " + "GPS: " + string(iC.GpsModeFlipSwitchPulse) + " Failsafe: " + string(iC.FailsafeModeFlipSwitchPulse) + " Selectable: " + string(iC.SelectableModeFlipSwitchPulse))
+	println( "U Channel " + string(Uchannel) + " PWM Values " + "GPS: " + string(iC.GpsModeFlipSwitchDutyCycle) + " Failsafe: " + string(iC.FailsafeModeFlipSwitchDutyCycle) + " Selectable: " + string(iC.SelectableModeFlipSwitchDutyCycle))
 	println( "-" )
 
 	SetNeutral(iC);
@@ -86,12 +105,15 @@ func SetNeutral(iC *interfaceConfig) {
 func SetFlightMode(iC *interfaceConfig, mode string) {
     if mode=="gps" {
 			// pca9685.Write(CHANNEL(iC.("U","channel")), VALUE(iC.("U", "gps")));
+      iC.SetChannel(Uchannel, 0, GpsModeFlipSwitchDutyCycle)
 			println("Setting flight mode: "+ mode)
 		} else if mode=="failsafe" {
 			// pca9685.Write(CHANNEL(iC.("U","channel")), VALUE(iC.("U", "failsafe")));
+      iC.SetChannel(Uchannel, 0, FailsafeModeFlipSwitchDutyCycle)
 			println("Setting flight mode: "+ mode)
 		} else if mode=="selectable" {
 			// pca9685.Write(CHANNEL(iC.("U","channel")), VALUE(iC.("U", "selectable")));
+      iC.SetChannel(Uchannel, 0, SelectableModeFlipSwitchDutyCycle)
 			println("Setting flight mode: "+ mode)
 		}
 }
@@ -99,15 +121,18 @@ func SetFlightMode(iC *interfaceConfig, mode string) {
 // degreeVal represents the distance the stick travels either downwards -100 to 0 or 0 to 100 upwards
 // returns true if successful
 func SetPitch(iC *interfaceConfig, degreeVal int) bool {
-  pwmPulse := 0
+  dutyCycle := 0
   if degreeVal < 0 {
-    pwmPulse = calcPWMPulseFromNeutralCenter(iC, Echannel, "left", (degreeVal*-1))
+    dutyCycle = calcdutyCycleFromNeutralCenter(iC, Echannel, "left", (degreeVal*-1))
+    iC.SetChannel(Echannel, 0, dutyCycle)
   } else if degreeVal > 0{
-    pwmPulse= calcPWMPulseFromNeutralCenter(iC, Echannel, "right", degreeVal)
+    dutyCycle= calcdutyCycleFromNeutralCenter(iC, Echannel, "right", degreeVal)
+    iC.SetChannel(Echannel, 0, dutyCycle)
   } else if degreeVal == 0 {
-    pwmPulse = calcPWMPulseFromNeutralCenter(iC, Echannel, "left", 0)
+    dutyCycle = calcdutyCycleFromNeutralCenter(iC, Echannel, "left", 0)
+    iC.SetChannel(Echannel, 0, dutyCycle)
   }
-  print(pwmPulse)
+  print(dutyCycle)
   return true
 }
 
@@ -115,15 +140,18 @@ func SetPitch(iC *interfaceConfig, degreeVal int) bool {
 // degreeVal represents the distance the stick travels either to the left -100 to 0 or 0 to 100 to the right
 // returns true if successful
 func SetRoll(iC *interfaceConfig, degreeVal int) bool {
-  pwmPulse := 0
+  dutyCycle := 0
   if degreeVal < 0 {
-    pwmPulse = calcPWMPulseFromNeutralCenter(iC, Achannel, "left", (degreeVal*-1))
+    dutyCycle = calcdutyCycleFromNeutralCenter(iC, Achannel, "left", (degreeVal*-1))
+    iC.SetChannel(Achannel, 0, dutyCycle)
   } else if degreeVal > 0{
-    pwmPulse= calcPWMPulseFromNeutralCenter(iC, Achannel, "right", degreeVal)
+    dutyCycle= calcdutyCycleFromNeutralCenter(iC, Achannel, "right", degreeVal)
+    iC.SetChannel(Achannel, 0, dutyCycle)
   } else if degreeVal == 0 {
-    pwmPulse = calcPWMPulseFromNeutralCenter(iC, Achannel, "left", 0)
+    dutyCycle = calcdutyCycleFromNeutralCenter(iC, Achannel, "left", 0)
+    iC.SetChannel(Achannel, 0, dutyCycle)
   }
-  print(pwmPulse)
+  print(dutyCycle)
 
   return true
 }
@@ -131,119 +159,124 @@ func SetRoll(iC *interfaceConfig, degreeVal int) bool {
 // degreeVal represents the distance the stick travels either to the left -100 to 0 or 0 to 100 to the right
 // returns true if successful
 func SetYaw(iC *interfaceConfig, degreeVal int) bool {
-  pwmPulse := 0
+  dutyCycle := 0
   if degreeVal < 0 {
-    pwmPulse = calcPWMPulseFromNeutralCenter(iC, Rchannel, "left", (degreeVal*-1))
+    dutyCycle = calcdutyCycleFromNeutralCenter(iC, Rchannel, "left", (degreeVal*-1))
+    iC.SetChannel(Rchannel, 0, dutyCycle)
   } else if degreeVal > 0{
-    pwmPulse= calcPWMPulseFromNeutralCenter(iC, Rchannel, "right", degreeVal)
+    dutyCycle= calcdutyCycleFromNeutralCenter(iC, Rchannel, "right", degreeVal)
+    iC.SetChannel(Rchannel, 0, dutyCycle)
   } else if degreeVal == 0 {
-    pwmPulse = calcPWMPulseFromNeutralCenter(iC, Rchannel, "left", 0)
+    dutyCycle = calcdutyCycleFromNeutralCenter(iC, Rchannel, "left", 0)
+    iC.SetChannel(Rchannel, 0, dutyCycle)
   }
 
-  print(pwmPulse)
+  print(dutyCycle)
   return true
 }
 
 // degreeVal represents the distance the stick travels from 0 to 100 up or down
 // returns true if successful
 func SetThrottle(iC *interfaceConfig, degreeVal int) bool {
-  pwmPulse := 0
+  dutyCycle := 0
   if degreeVal > 0 {
-    pwmPulse = calcPWMPulseFromNeutralZero(iC, Tchannel, degreeVal)
+    dutyCycle = calcdutyCycleFromNeutralZero(iC, Tchannel, degreeVal)
+    iC.SetChannel(Tchannel, 0, dutyCycle)
   } else if degreeVal == 0 {
-    pwmPulse = calcPWMPulseFromNeutralZero(iC, Tchannel, 0)
+    dutyCycle = calcdutyCycleFromNeutralZero(iC, Tchannel, 0)
+    iC.SetChannel(Tchannel, 0, dutyCycle)
   }
 
-  print(pwmPulse)
+  print(dutyCycle)
   return true
 }
 
 // calculates pwm pulse. expects neutral stick position to be in the middle
-func calcPWMPulseFromNeutralCenter(iC *interfaceConfig, channel int, side string, degreeVal int) int{
-  var pwmPulse = 0
+func calcdutyCycleFromNeutralCenter(iC *interfaceConfig, channel int, side string, degreeVal int) int{
+  var dutyCycle = 0
   if side == "left" {
     if iC.StickDir=="rev" {
       if iC.NeutralStickPos[channel]>iC.LeftStickMaxPos[channel] {
-        pwmPulse=iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel]
-        pwmPulse=pwmPulse/100
-        pwmPulse=pwmPulse*degreeVal
-        pwmPulse=pwmPulse+iC.NeutralStickPos[channel]
+        dutyCycle=iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel]
+        dutyCycle=dutyCycle/100
+        dutyCycle=dutyCycle*degreeVal
+        dutyCycle=dutyCycle+iC.NeutralStickPos[channel]
       } else if iC.LeftStickMaxPos[channel]>iC.NeutralStickPos[channel] {
-        pwmPulse=iC.LeftStickMaxPos[channel]-iC.NeutralStickPos[channel]
-        pwmPulse=pwmPulse/100
-        pwmPulse=pwmPulse*degreeVal
-        pwmPulse=pwmPulse+iC.NeutralStickPos[channel]
+        dutyCycle=iC.LeftStickMaxPos[channel]-iC.NeutralStickPos[channel]
+        dutyCycle=dutyCycle/100
+        dutyCycle=dutyCycle*degreeVal
+        dutyCycle=dutyCycle+iC.NeutralStickPos[channel]
       }
     } else if iC.StickDir=="norm" {
       if iC.NeutralStickPos[channel]<iC.LeftStickMaxPos[channel] {
-        pwmPulse=iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel]
-        pwmPulse=pwmPulse/100
-        pwmPulse=pwmPulse*degreeVal
-        pwmPulse=pwmPulse+iC.NeutralStickPos[channel]
+        dutyCycle=iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel]
+        dutyCycle=dutyCycle/100
+        dutyCycle=dutyCycle*degreeVal
+        dutyCycle=dutyCycle+iC.NeutralStickPos[channel]
       } else if iC.LeftStickMaxPos[channel]<iC.NeutralStickPos[channel] {
-        pwmPulse=iC.LeftStickMaxPos[channel]-iC.NeutralStickPos[channel]
-        pwmPulse=pwmPulse/100
-        pwmPulse=pwmPulse*degreeVal
-        pwmPulse=pwmPulse+iC.NeutralStickPos[channel]
+        dutyCycle=iC.LeftStickMaxPos[channel]-iC.NeutralStickPos[channel]
+        dutyCycle=dutyCycle/100
+        dutyCycle=dutyCycle*degreeVal
+        dutyCycle=dutyCycle+iC.NeutralStickPos[channel]
       }
     }
   } else if side == "right" {
     if iC.StickDir=="rev" {
       if(iC.NeutralStickPos[channel]>iC.RightStickMaxPos[channel]) {
-        pwmPulse=iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel]
-        pwmPulse=pwmPulse/100
-        pwmPulse=pwmPulse*degreeVal
-        pwmPulse=iC.NeutralStickPos[channel]-pwmPulse
+        dutyCycle=iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel]
+        dutyCycle=dutyCycle/100
+        dutyCycle=dutyCycle*degreeVal
+        dutyCycle=iC.NeutralStickPos[channel]-dutyCycle
       } else if(iC.RightStickMaxPos[channel]>iC.NeutralStickPos[channel]) {
-        pwmPulse=iC.RightStickMaxPos[channel]-iC.NeutralStickPos[channel]
-        pwmPulse=pwmPulse/100
-        pwmPulse=pwmPulse*degreeVal
-        pwmPulse=iC.NeutralStickPos[channel]-pwmPulse
+        dutyCycle=iC.RightStickMaxPos[channel]-iC.NeutralStickPos[channel]
+        dutyCycle=dutyCycle/100
+        dutyCycle=dutyCycle*degreeVal
+        dutyCycle=iC.NeutralStickPos[channel]-dutyCycle
       }
     } else if iC.StickDir=="norm" {
 
       if iC.NeutralStickPos[channel]<iC.RightStickMaxPos[channel] {
-        pwmPulse=iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel]
-        pwmPulse=pwmPulse/100
-        pwmPulse=pwmPulse*degreeVal
-        pwmPulse=iC.NeutralStickPos[channel]-pwmPulse
+        dutyCycle=iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel]
+        dutyCycle=dutyCycle/100
+        dutyCycle=dutyCycle*degreeVal
+        dutyCycle=iC.NeutralStickPos[channel]-dutyCycle
       } else if iC.RightStickMaxPos[channel]<iC.NeutralStickPos[channel] {
-        pwmPulse=iC.RightStickMaxPos[channel]-iC.NeutralStickPos[channel]
-        pwmPulse=pwmPulse/100
-        pwmPulse=pwmPulse*degreeVal
-        pwmPulse=iC.NeutralStickPos[channel]-pwmPulse
+        dutyCycle=iC.RightStickMaxPos[channel]-iC.NeutralStickPos[channel]
+        dutyCycle=dutyCycle/100
+        dutyCycle=dutyCycle*degreeVal
+        dutyCycle=iC.NeutralStickPos[channel]-dutyCycle
       }
     }
   }
-  return pwmPulse
+  return dutyCycle
 }
 
-func calcPWMPulseFromNeutralZero(iC *interfaceConfig, channel int, degreeVal int) int{
-  var pwmPulse = 0
+func calcdutyCycleFromNeutralZero(iC *interfaceConfig, channel int, degreeVal int) int{
+  var dutyCycle = 0
   if iC.StickDir=="rev" {
     if iC.RightStickMaxPos[channel]>iC.LeftStickMaxPos[channel] {
-      pwmPulse=iC.RightStickMaxPos[channel]-iC.LeftStickMaxPos[channel]
-      pwmPulse=pwmPulse/100
-      pwmPulse=pwmPulse*degreeVal
-      pwmPulse=iC.LeftStickMaxPos[channel]-pwmPulse
+      dutyCycle=iC.RightStickMaxPos[channel]-iC.LeftStickMaxPos[channel]
+      dutyCycle=dutyCycle/100
+      dutyCycle=dutyCycle*degreeVal
+      dutyCycle=iC.LeftStickMaxPos[channel]-dutyCycle
     } else if iC.RightStickMaxPos[channel]<iC.LeftStickMaxPos[channel] {
-      pwmPulse=iC.LeftStickMaxPos[channel]-iC.RightStickMaxPos[channel]
-      pwmPulse=pwmPulse/100
-      pwmPulse=pwmPulse*degreeVal
-      pwmPulse=iC.LeftStickMaxPos[channel]-pwmPulse
+      dutyCycle=iC.LeftStickMaxPos[channel]-iC.RightStickMaxPos[channel]
+      dutyCycle=dutyCycle/100
+      dutyCycle=dutyCycle*degreeVal
+      dutyCycle=iC.LeftStickMaxPos[channel]-dutyCycle
     }
   } else if(iC.StickDir=="norm"){
     if iC.RightStickMaxPos[channel]<iC.LeftStickMaxPos[channel] {
-      pwmPulse=iC.LeftStickMaxPos[channel]-iC.RightStickMaxPos[channel]
-      pwmPulse=pwmPulse/100
-      pwmPulse=pwmPulse*degreeVal
-      pwmPulse=iC.RightStickMaxPos[channel]+pwmPulse
+      dutyCycle=iC.LeftStickMaxPos[channel]-iC.RightStickMaxPos[channel]
+      dutyCycle=dutyCycle/100
+      dutyCycle=dutyCycle*degreeVal
+      dutyCycle=iC.RightStickMaxPos[channel]+dutyCycle
     } else if iC.RightStickMaxPos[channel]>iC.LeftStickMaxPos[channel] {
-      pwmPulse=iC.RightStickMaxPos[channel]-iC.LeftStickMaxPos[channel]
-      pwmPulse=pwmPulse/100
-      pwmPulse=pwmPulse*degreeVal
-      pwmPulse=iC.RightStickMaxPos[channel]-pwmPulse
+      dutyCycle=iC.RightStickMaxPos[channel]-iC.LeftStickMaxPos[channel]
+      dutyCycle=dutyCycle/100
+      dutyCycle=dutyCycle*degreeVal
+      dutyCycle=iC.RightStickMaxPos[channel]-dutyCycle
     }
   }
-  return pwmPulse
+  return dutyCycle
 }

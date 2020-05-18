@@ -2,12 +2,14 @@ package goNazaV2Interface
 
 import(
   "time"
+  "log"
   "goNazaV2Interface/go-pca9685"
+  i2c "goNazaV2Interface/go-i2c"
 )
 
 type interfaceConfig struct {
   StickDir string
-  pca *PCA9685
+  pca *pca9685.PCA9685
 
   // key: channel, value: stick max pos
   LeftStickMaxPos map[int]int
@@ -33,12 +35,13 @@ const(
   Uchannel = 5
 )
 
-func InitI2CPca9685() *PCA9685 {
+// Create new PCA9685 conn
+func InitPCA9685(iC *interfaceConfig) {
   // Create new connection to i2c-bus on 1 line with address 0x40.
   // Use i2cdetect utility to find device address over the i2c-bus
   i2c, err := i2c.NewI2C(pca9685.Address, 1)
   if err != nil {
-      log.Fatal(err)
+    log.Fatal(err)
   }
 
   pca0 := pca9685.PCANew(i2c, nil)
@@ -46,9 +49,8 @@ func InitI2CPca9685() *PCA9685 {
   if err != nil {
     log.Fatal(err)
   }
-
-  return pca0
 }
+
 
 /**
     init_naza requires the drone NOT to be in the air!
@@ -105,15 +107,15 @@ func SetNeutral(iC *interfaceConfig) {
 func SetFlightMode(iC *interfaceConfig, mode string) {
     if mode=="gps" {
 			// pca9685.Write(CHANNEL(iC.("U","channel")), VALUE(iC.("U", "gps")));
-      iC.SetChannel(Uchannel, 0, GpsModeFlipSwitchDutyCycle)
+      iC.pca.SetChannel(Uchannel, 0, iC.GpsModeFlipSwitchDutyCycle)
 			println("Setting flight mode: "+ mode)
 		} else if mode=="failsafe" {
 			// pca9685.Write(CHANNEL(iC.("U","channel")), VALUE(iC.("U", "failsafe")));
-      iC.SetChannel(Uchannel, 0, FailsafeModeFlipSwitchDutyCycle)
+      iC.pca.SetChannel(Uchannel, 0, iC.FailsafeModeFlipSwitchDutyCycle)
 			println("Setting flight mode: "+ mode)
 		} else if mode=="selectable" {
 			// pca9685.Write(CHANNEL(iC.("U","channel")), VALUE(iC.("U", "selectable")));
-      iC.SetChannel(Uchannel, 0, SelectableModeFlipSwitchDutyCycle)
+      iC.pca.SetChannel(Uchannel, 0, iC.SelectableModeFlipSwitchDutyCycle)
 			println("Setting flight mode: "+ mode)
 		}
 }
@@ -124,13 +126,13 @@ func SetPitch(iC *interfaceConfig, degreeVal int) bool {
   dutyCycle := 0
   if degreeVal < 0 {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Echannel, "left", (degreeVal*-1))
-    iC.SetChannel(Echannel, 0, dutyCycle)
+    iC.pca.SetChannel(Echannel, 0, dutyCycle)
   } else if degreeVal > 0{
     dutyCycle= calcdutyCycleFromNeutralCenter(iC, Echannel, "right", degreeVal)
-    iC.SetChannel(Echannel, 0, dutyCycle)
+    iC.pca.SetChannel(Echannel, 0, dutyCycle)
   } else if degreeVal == 0 {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Echannel, "left", 0)
-    iC.SetChannel(Echannel, 0, dutyCycle)
+    iC.pca.SetChannel(Echannel, 0, dutyCycle)
   }
   print(dutyCycle)
   return true
@@ -143,13 +145,13 @@ func SetRoll(iC *interfaceConfig, degreeVal int) bool {
   dutyCycle := 0
   if degreeVal < 0 {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Achannel, "left", (degreeVal*-1))
-    iC.SetChannel(Achannel, 0, dutyCycle)
+    iC.pca.SetChannel(Achannel, 0, dutyCycle)
   } else if degreeVal > 0{
     dutyCycle= calcdutyCycleFromNeutralCenter(iC, Achannel, "right", degreeVal)
-    iC.SetChannel(Achannel, 0, dutyCycle)
+    iC.pca.SetChannel(Achannel, 0, dutyCycle)
   } else if degreeVal == 0 {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Achannel, "left", 0)
-    iC.SetChannel(Achannel, 0, dutyCycle)
+    iC.pca.SetChannel(Achannel, 0, dutyCycle)
   }
   print(dutyCycle)
 
@@ -162,13 +164,13 @@ func SetYaw(iC *interfaceConfig, degreeVal int) bool {
   dutyCycle := 0
   if degreeVal < 0 {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Rchannel, "left", (degreeVal*-1))
-    iC.SetChannel(Rchannel, 0, dutyCycle)
+    iC.pca.SetChannel(Rchannel, 0, dutyCycle)
   } else if degreeVal > 0{
     dutyCycle= calcdutyCycleFromNeutralCenter(iC, Rchannel, "right", degreeVal)
-    iC.SetChannel(Rchannel, 0, dutyCycle)
+    iC.pca.SetChannel(Rchannel, 0, dutyCycle)
   } else if degreeVal == 0 {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Rchannel, "left", 0)
-    iC.SetChannel(Rchannel, 0, dutyCycle)
+    iC.pca.SetChannel(Rchannel, 0, dutyCycle)
   }
 
   print(dutyCycle)
@@ -181,10 +183,10 @@ func SetThrottle(iC *interfaceConfig, degreeVal int) bool {
   dutyCycle := 0
   if degreeVal > 0 {
     dutyCycle = calcdutyCycleFromNeutralZero(iC, Tchannel, degreeVal)
-    iC.SetChannel(Tchannel, 0, dutyCycle)
+    iC.pca.SetChannel(Tchannel, 0, dutyCycle)
   } else if degreeVal == 0 {
     dutyCycle = calcdutyCycleFromNeutralZero(iC, Tchannel, 0)
-    iC.SetChannel(Tchannel, 0, dutyCycle)
+    iC.pca.SetChannel(Tchannel, 0, dutyCycle)
   }
 
   print(dutyCycle)

@@ -7,9 +7,11 @@ import(
   i2c "goNazaV2Interface/go-i2c"
 )
 
-type interfaceConfig struct {
-  StickDir string
+type InterfaceConfig struct {
   pca *pca9685.PCA9685
+
+  // key: channel, value: stick dir
+  StickDir map[int]string
 
   // key: channel, value: stick max pos
   LeftStickMaxPos map[int]int
@@ -36,19 +38,22 @@ const(
 )
 
 // Create new PCA9685 conn
-func InitPCA9685(iC *interfaceConfig) {
+func InitPCA9685(iC *InterfaceConfig) bool{
   // Create new connection to i2c-bus on 1 line with address 0x40.
   // Use i2cdetect utility to find device address over the i2c-bus
   i2c, err := i2c.NewI2C(pca9685.Address, 1)
   if err != nil {
     log.Fatal(err)
+    return false
   }
 
   pca0 := pca9685.PCANew(i2c, nil)
   err = pca0.Init()
   if err != nil {
     log.Fatal(err)
+    return false
   }
+  return true
 }
 
 
@@ -57,7 +62,11 @@ func InitPCA9685(iC *interfaceConfig) {
 		ONLY USE ON GROUND!
     init_naza sets all control elements to neutral and prints pwm config values.
 */
-func InitNaza(iC *interfaceConfig){
+func InitNaza(iC *InterfaceConfig) bool{
+  if !(iC.LeftStickMaxPos != nil || iC.RightStickMaxPos != nil || iC.NeutralStickPos != nil || iC.GpsModeFlipSwitchDutyCycle != 0 || iC.SelectableModeFlipSwitchDutyCycle != 0 || iC.FailsafeModeFlipSwitchDutyCycle != 0) {
+    println("uninitialized val found")
+    return false
+  }
 	println( "Initializing Naza Interface Controller")
 	println( "-" )
 	println( "A Channel " + string(Achannel) + " PWM Values " + "left: " + string(iC.LeftStickMaxPos[Achannel]) + " middle: " + string(iC.NeutralStickPos[Achannel]) + " right: " + string(iC.RightStickMaxPos[Achannel]))
@@ -71,14 +80,64 @@ func InitNaza(iC *interfaceConfig){
 	println( "Setting all channels on neutral!" )
 	println( "---IMPORTANT---" )
 	println( "   Check channels for command calibration before giving power to motors!" )
+
+  return true
 }
+
+/**
+    recalibrate requires the drone NOT to be in the air!
+		ONLY USE ON GROUND!
+		recalibrate recalibrate all channels to corresponding config values.
+*/
+func recalibrate(iC *InterfaceConfig) {
+
+		println("Resetting all channels!")
+		SetNeutral(iC)
+		time.Sleep(1*time.Second)
+
+		println("Recalibration of channel A (1/2)")
+    iC.pca.SetChannel(Achannel, 0, iC.LeftStickMaxPos[Achannel])
+		time.Sleep(1*time.Second);
+		println("Recalibration of channel A (2/2)")
+    iC.pca.SetChannel(Achannel, 0, iC.RightStickMaxPos[Achannel])
+
+		time.Sleep(1*time.Second);
+		println("Recalibration of channel E (1/2)")
+    iC.pca.SetChannel(Echannel, 0, iC.LeftStickMaxPos[Echannel])
+		time.Sleep(1*time.Second);
+		println("Recalibration of channel E (2/2)")
+    iC.pca.SetChannel(Echannel, 0, iC.RightStickMaxPos[Echannel])
+
+		time.Sleep(1*time.Second);
+		println("Recalibration of channel T (1/2)")
+    iC.pca.SetChannel(Tchannel, 0, iC.LeftStickMaxPos[Tchannel])
+		time.Sleep(1*time.Second);
+		println("Recalibration of channel T (2/2)")
+    iC.pca.SetChannel(Tchannel, 0, iC.RightStickMaxPos[Tchannel])
+
+		time.Sleep(1*time.Second);
+		println("Recalibration of channel R (1/2)")
+    iC.pca.SetChannel(Rchannel, 0, iC.LeftStickMaxPos[Rchannel])
+		time.Sleep(1*time.Second);
+		println("Recalibration of channel R (2/2)")
+    iC.pca.SetChannel(Rchannel, 0, iC.RightStickMaxPos[Rchannel])
+
+ 		time.Sleep(1*time.Second);
+    println("Recalibration of channel U (1/2)")
+    iC.pca.SetChannel(Achannel, 0, iC.GpsModeFlipSwitchDutyCycle)
+    time.Sleep(1*time.Second);
+    println("Recalibration of channel U (2/2)")
+    iC.pca.SetChannel(Achannel, 0, iC.SelectableModeFlipSwitchDutyCycle)
+
+}
+
 
 /**
     arm_motors requires the drone NOT to be in the air!
 		ONLY USE ON GROUND!
     arm_motors arms the motors and then returns all channels to neutral
 */
-func ArmMotors(iC *interfaceConfig) {
+func ArmMotors(iC *InterfaceConfig) {
 	println("-------- ARMING MOTORS --------")
   SetRoll(iC, -100)
   SetPitch(iC, -100)
@@ -95,7 +154,7 @@ func ArmMotors(iC *interfaceConfig) {
 		ONLY USE ON GROUND!
     set_neutral sets all channels to neutral including THROTTLE TO 0%
 */
-func SetNeutral(iC *interfaceConfig) {
+func SetNeutral(iC *InterfaceConfig) {
 		if (SetPitch(iC, 0) && SetRoll(iC, 0) && SetYaw(iC, 0) && SetThrottle(iC, 0)) {
       println("set stick pos to neutral")
     } else {
@@ -104,7 +163,7 @@ func SetNeutral(iC *interfaceConfig) {
 }
 
 //  Use set_flight_mode to switches between different flight modes.
-func SetFlightMode(iC *interfaceConfig, mode string) {
+func SetFlightMode(iC *InterfaceConfig, mode string) {
     if mode=="gps" {
 			// pca9685.Write(CHANNEL(iC.("U","channel")), VALUE(iC.("U", "gps")));
       iC.pca.SetChannel(Uchannel, 0, iC.GpsModeFlipSwitchDutyCycle)
@@ -122,7 +181,7 @@ func SetFlightMode(iC *interfaceConfig, mode string) {
 
 // degreeVal represents the distance the stick travels either downwards -100 to 0 or 0 to 100 upwards
 // returns true if successful
-func SetPitch(iC *interfaceConfig, degreeVal int) bool {
+func SetPitch(iC *InterfaceConfig, degreeVal int) bool {
   dutyCycle := 0
   if degreeVal < 0 {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Echannel, "left", (degreeVal*-1))
@@ -141,7 +200,7 @@ func SetPitch(iC *interfaceConfig, degreeVal int) bool {
 
 // degreeVal represents the distance the stick travels either to the left -100 to 0 or 0 to 100 to the right
 // returns true if successful
-func SetRoll(iC *interfaceConfig, degreeVal int) bool {
+func SetRoll(iC *InterfaceConfig, degreeVal int) bool {
   dutyCycle := 0
   if degreeVal < 0 {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Achannel, "left", (degreeVal*-1))
@@ -160,7 +219,7 @@ func SetRoll(iC *interfaceConfig, degreeVal int) bool {
 
 // degreeVal represents the distance the stick travels either to the left -100 to 0 or 0 to 100 to the right
 // returns true if successful
-func SetYaw(iC *interfaceConfig, degreeVal int) bool {
+func SetYaw(iC *InterfaceConfig, degreeVal int) bool {
   dutyCycle := 0
   if degreeVal < 0 {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Rchannel, "left", (degreeVal*-1))
@@ -179,7 +238,7 @@ func SetYaw(iC *interfaceConfig, degreeVal int) bool {
 
 // degreeVal represents the distance the stick travels from 0 to 100 up or down
 // returns true if successful
-func SetThrottle(iC *interfaceConfig, degreeVal int) bool {
+func SetThrottle(iC *InterfaceConfig, degreeVal int) bool {
   dutyCycle := 0
   if degreeVal > 0 {
     dutyCycle = calcdutyCycleFromNeutralZero(iC, Tchannel, degreeVal)
@@ -194,10 +253,10 @@ func SetThrottle(iC *interfaceConfig, degreeVal int) bool {
 }
 
 // calculates pwm pulse. expects neutral stick position to be in the middle
-func calcdutyCycleFromNeutralCenter(iC *interfaceConfig, channel int, side string, degreeVal int) int{
+func calcdutyCycleFromNeutralCenter(iC *InterfaceConfig, channel int, side string, degreeVal int) int{
   var dutyCycle = 0
   if side == "left" {
-    if iC.StickDir=="rev" {
+    if iC.StickDir[channel]=="rev" {
       if iC.NeutralStickPos[channel]>iC.LeftStickMaxPos[channel] {
         dutyCycle=iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel]
         dutyCycle=dutyCycle/100
@@ -209,7 +268,7 @@ func calcdutyCycleFromNeutralCenter(iC *interfaceConfig, channel int, side strin
         dutyCycle=dutyCycle*degreeVal
         dutyCycle=dutyCycle+iC.NeutralStickPos[channel]
       }
-    } else if iC.StickDir=="norm" {
+    } else if iC.StickDir[channel]=="norm" {
       if iC.NeutralStickPos[channel]<iC.LeftStickMaxPos[channel] {
         dutyCycle=iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel]
         dutyCycle=dutyCycle/100
@@ -223,7 +282,7 @@ func calcdutyCycleFromNeutralCenter(iC *interfaceConfig, channel int, side strin
       }
     }
   } else if side == "right" {
-    if iC.StickDir=="rev" {
+    if iC.StickDir[channel]=="rev" {
       if(iC.NeutralStickPos[channel]>iC.RightStickMaxPos[channel]) {
         dutyCycle=iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel]
         dutyCycle=dutyCycle/100
@@ -235,7 +294,7 @@ func calcdutyCycleFromNeutralCenter(iC *interfaceConfig, channel int, side strin
         dutyCycle=dutyCycle*degreeVal
         dutyCycle=iC.NeutralStickPos[channel]-dutyCycle
       }
-    } else if iC.StickDir=="norm" {
+    } else if iC.StickDir[channel]=="norm" {
 
       if iC.NeutralStickPos[channel]<iC.RightStickMaxPos[channel] {
         dutyCycle=iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel]
@@ -253,9 +312,9 @@ func calcdutyCycleFromNeutralCenter(iC *interfaceConfig, channel int, side strin
   return dutyCycle
 }
 
-func calcdutyCycleFromNeutralZero(iC *interfaceConfig, channel int, degreeVal int) int{
+func calcdutyCycleFromNeutralZero(iC *InterfaceConfig, channel int, degreeVal int) int{
   var dutyCycle = 0
-  if iC.StickDir=="rev" {
+  if iC.StickDir[channel]=="rev" {
     if iC.RightStickMaxPos[channel]>iC.LeftStickMaxPos[channel] {
       dutyCycle=iC.RightStickMaxPos[channel]-iC.LeftStickMaxPos[channel]
       dutyCycle=dutyCycle/100
@@ -267,7 +326,7 @@ func calcdutyCycleFromNeutralZero(iC *interfaceConfig, channel int, degreeVal in
       dutyCycle=dutyCycle*degreeVal
       dutyCycle=iC.LeftStickMaxPos[channel]-dutyCycle
     }
-  } else if(iC.StickDir=="norm"){
+  } else if(iC.StickDir[channel]=="norm"){
     if iC.RightStickMaxPos[channel]<iC.LeftStickMaxPos[channel] {
       dutyCycle=iC.LeftStickMaxPos[channel]-iC.RightStickMaxPos[channel]
       dutyCycle=dutyCycle/100

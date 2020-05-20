@@ -3,10 +3,7 @@ package main
 
 import(
   "fmt"
-  "os"
-  "strings"
   "strconv"
-  "bufio"
   "log"
   "goNazaV2Interface/go-pca9685"
   i2c "goNazaV2Interface/go-i2c"
@@ -27,20 +24,18 @@ func main() {
   log.Fatal(err)
   }
 
-  reader := bufio.NewReader(os.Stdin)
   fmt.Print("channel: ")
 
-  channel, _ := reader.ReadString('\n')
+  var ch int
+  var val int
+  fmt.Scan(&ch)
 
-  println("Channel set to: " + channel)
+  println("Channel set to: " + strconv.Itoa(ch))
+
   for {
     fmt.Print("-> ")
-    text, _ := reader.ReadString('\n')
-    // convert CRLF to LF
-    text = strings.Replace(text, "\n", "", -1)
+    fmt.Scan(&val)
 
-    ch, _ := strconv.Atoi(channel)
-    val, _ := strconv.Atoi(text)
     pca0.SetChannel(ch, 0, val)
   }
 }

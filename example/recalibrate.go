@@ -41,11 +41,7 @@ func main() {
   interfaceConf.SelectableModeFlipSwitchDutyCycle = 250
 
   if naza.InitPCA9685(&interfaceConf) {
-    if naza.InitNaza(&interfaceConf) {
-
-    } else {
-      println("failed to init naza")
-    }
+    naza.Recalibrate(&interfaceConf)
   } else {
     println("failed to init PCA9685")
   }

@@ -3,6 +3,7 @@ package goNazaV2Interface
 import(
   "time"
   "log"
+  "strconv"
   "goNazaV2Interface/go-pca9685"
   i2c "goNazaV2Interface/go-i2c"
 )
@@ -53,6 +54,7 @@ func InitPCA9685(iC *InterfaceConfig) bool{
     log.Fatal(err)
     return false
   }
+  iC.pca = pca0
   return true
 }
 
@@ -69,11 +71,11 @@ func InitNaza(iC *InterfaceConfig) bool{
   }
 	println( "Initializing Naza Interface Controller")
 	println( "-" )
-	println( "A Channel " + string(Achannel) + " PWM Values " + "left: " + string(iC.LeftStickMaxPos[Achannel]) + " middle: " + string(iC.NeutralStickPos[Achannel]) + " right: " + string(iC.RightStickMaxPos[Achannel]))
-	println( "E Channel " + string(Echannel) + " PWM Values " + "left: " + string(iC.LeftStickMaxPos[Echannel]) + " middle: " + string(iC.NeutralStickPos[Echannel]) + " right: " + string(iC.RightStickMaxPos[Echannel]))
-	println( "T Channel " + string(Tchannel) + " PWM Values " + "left: " + string(iC.LeftStickMaxPos[Tchannel]) + " right: " + string(iC.RightStickMaxPos[Tchannel]))
-	println( "R Channel " + string(Rchannel) + " PWM Values " + "left: " + string(iC.LeftStickMaxPos[Rchannel]) + " middle: " + string(iC.NeutralStickPos[Rchannel]) + " right: " + string(iC.RightStickMaxPos[Rchannel]))
-	println( "U Channel " + string(Uchannel) + " PWM Values " + "GPS: " + string(iC.GpsModeFlipSwitchDutyCycle) + " Failsafe: " + string(iC.FailsafeModeFlipSwitchDutyCycle) + " Selectable: " + string(iC.SelectableModeFlipSwitchDutyCycle))
+	println( "A Channel " + strconv.Itoa(Achannel) + " PWM Values " + "left: " + strconv.Itoa(iC.LeftStickMaxPos[Achannel]) + " middle: " + strconv.Itoa(iC.NeutralStickPos[Achannel]) + " right: " + strconv.Itoa(iC.RightStickMaxPos[Achannel]))
+	println( "E Channel " + strconv.Itoa(Echannel) + " PWM Values " + "left: " + strconv.Itoa(iC.LeftStickMaxPos[Echannel]) + " middle: " + strconv.Itoa(iC.NeutralStickPos[Echannel]) + " right: " + strconv.Itoa(iC.RightStickMaxPos[Echannel]))
+	println( "T Channel " + strconv.Itoa(Tchannel) + " PWM Values " + "left: " + strconv.Itoa(iC.LeftStickMaxPos[Tchannel]) + " right: " + strconv.Itoa(iC.RightStickMaxPos[Tchannel]))
+	println( "R Channel " + strconv.Itoa(Rchannel) + " PWM Values " + "left: " + strconv.Itoa(iC.LeftStickMaxPos[Rchannel]) + " middle: " + strconv.Itoa(iC.NeutralStickPos[Rchannel]) + " right: " + strconv.Itoa(iC.RightStickMaxPos[Rchannel]))
+	println( "U Channel " + strconv.Itoa(Uchannel) + " PWM Values " + "GPS: " + strconv.Itoa(iC.GpsModeFlipSwitchDutyCycle) + " Failsafe: " + strconv.Itoa(iC.FailsafeModeFlipSwitchDutyCycle) + " Selectable: " + strconv.Itoa(iC.SelectableModeFlipSwitchDutyCycle))
 	println( "-" )
 
 	SetNeutral(iC);
@@ -89,7 +91,7 @@ func InitNaza(iC *InterfaceConfig) bool{
 		ONLY USE ON GROUND!
 		recalibrate recalibrate all channels to corresponding config values.
 */
-func recalibrate(iC *InterfaceConfig) {
+func Recalibrate(iC *InterfaceConfig) {
 
 		println("Resetting all channels!")
 		SetNeutral(iC)
@@ -144,9 +146,9 @@ func ArmMotors(iC *InterfaceConfig) {
   SetThrottle(iC, 0)
   SetYaw(iC, -100)
 
-	time.Sleep(2 * time.Second);
+	time.Sleep(2 * time.Second)
 
-	SetNeutral(iC);
+	SetNeutral(iC)
 }
 
 /**
@@ -160,6 +162,7 @@ func SetNeutral(iC *InterfaceConfig) {
     } else {
       println("failed to set stick pos to neutral")
     }
+    SetFlightMode(iC, "gps")
 }
 
 //  Use set_flight_mode to switches between different flight modes.

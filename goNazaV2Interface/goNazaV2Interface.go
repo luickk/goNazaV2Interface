@@ -27,15 +27,15 @@ type InterfaceConfig struct {
 // pca9685 channel enums
 const(
   // A: for roll control
-  Achannel = 1
+  Achannel = 0
   // E: for pitch control
-  Echannel = 2
+  Echannel = 1
   // T: for throttle control
-  Tchannel = 3
+  Tchannel = 2
   // R: for yaw control
-  Rchannel = 4
+  Rchannel = 3
   // U: for mode control
-  Uchannel = 5
+  Uchannel = 4
 )
 
 // Create new PCA9685 conn
@@ -126,11 +126,12 @@ func Recalibrate(iC *InterfaceConfig) {
 
  		time.Sleep(1*time.Second);
     println("Recalibration of channel U (1/2)")
-    iC.pca.SetChannel(Achannel, 0, iC.GpsModeFlipSwitchDutyCycle)
+    iC.pca.SetChannel(Uchannel, 0, iC.GpsModeFlipSwitchDutyCycle)
     time.Sleep(1*time.Second);
     println("Recalibration of channel U (2/2)")
-    iC.pca.SetChannel(Achannel, 0, iC.SelectableModeFlipSwitchDutyCycle)
+    iC.pca.SetChannel(Uchannel, 0, iC.SelectableModeFlipSwitchDutyCycle)
 
+    SetNeutral(iC)
 }
 
 

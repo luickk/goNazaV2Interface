@@ -313,6 +313,7 @@ func calcdutyCycleFromNeutralCenter(iC *InterfaceConfig, channel int, side strin
       }
     }
   }
+  print("calc Duty cycle: " + strconv.Itoa(dutyCycle))
   return dutyCycle
 }
 
@@ -343,5 +344,6 @@ func calcdutyCycleFromNeutralZero(iC *InterfaceConfig, channel int, degreeVal in
       dutyCycle=iC.RightStickMaxPos[channel]-dutyCycle
     }
   }
+  print("calc Duty cycle: " + strconv.Itoa(dutyCycle))
   return dutyCycle
 }

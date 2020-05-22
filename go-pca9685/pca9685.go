@@ -36,8 +36,13 @@ const (
 
 	// Registers
 	Mode1    byte = 0x00
+	Mode2 byte = 0x01
 	Prescale byte = 0xFE
 	Led0On   byte = 0x06
+
+	AllCall byte = 0x01
+	INVRT byte = 0x10
+	OUTDRV byte = 0x04
 
 	// The internal reference clock is 25mhz but may vary slightly with
 	// environmental conditions and manufacturing variances. Providing a more precise
@@ -82,6 +87,9 @@ func (pca *PCA9685) Init() (err error) {
 	if pca.Conn.GetAddr() == 0 {
 		return fmt.Errorf(`device %v is not initiated`, pca.Optn.Name)
 	}
+  pca.Conn.WriteRegU8(Mode2, OUTDRV)
+  pca.Conn.WriteRegU8(Mode1, AllCall)
+	time.Sleep(5*time.Millisecond)
 	return pca.SetFreq(pca.Optn.Frequency)
 }
 

@@ -197,7 +197,6 @@ func SetPitch(iC *InterfaceConfig, degreeVal int) bool {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Echannel, "left", 0)
     iC.pca.SetChannel(Echannel, 0, dutyCycle)
   }
-  print(dutyCycle)
   return true
 }
 
@@ -216,8 +215,6 @@ func SetRoll(iC *InterfaceConfig, degreeVal int) bool {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Achannel, "left", 0)
     iC.pca.SetChannel(Achannel, 0, dutyCycle)
   }
-  print(dutyCycle)
-
   return true
 }
 
@@ -235,8 +232,6 @@ func SetYaw(iC *InterfaceConfig, degreeVal int) bool {
     dutyCycle = calcdutyCycleFromNeutralCenter(iC, Rchannel, "left", 0)
     iC.pca.SetChannel(Rchannel, 0, dutyCycle)
   }
-
-  print(dutyCycle)
   return true
 }
 
@@ -251,99 +246,99 @@ func SetThrottle(iC *InterfaceConfig, degreeVal int) bool {
     dutyCycle = calcdutyCycleFromNeutralZero(iC, Tchannel, 0)
     iC.pca.SetChannel(Tchannel, 0, dutyCycle)
   }
-
-  print(dutyCycle)
   return true
 }
 
 // calculates pwm pulse. expects neutral stick position to be in the middle
-func calcdutyCycleFromNeutralCenter(iC *InterfaceConfig, channel int, side string, degreeVal int) int{
-  var dutyCycle = 0
+func calcdutyCycleFromNeutralCenter(iC *InterfaceConfig, channel int, side string, degreeVal int) int {
+  degreeValf := float64(degreeVal)
+  var dutyCycle float64 = 0
   if side == "left" {
     if iC.StickDir[channel]=="rev" {
       if iC.NeutralStickPos[channel]>iC.LeftStickMaxPos[channel] {
-        dutyCycle=iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel]
-        dutyCycle=dutyCycle/100
-        dutyCycle=dutyCycle*degreeVal
-        dutyCycle=dutyCycle+iC.NeutralStickPos[channel]
+        dutyCycle=float64(iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel])
+        dutyCycle=dutyCycle/100.0
+        dutyCycle=dutyCycle*degreeValf
+        dutyCycle=dutyCycle+float64(iC.NeutralStickPos[channel])
       } else if iC.LeftStickMaxPos[channel]>iC.NeutralStickPos[channel] {
-        dutyCycle=iC.LeftStickMaxPos[channel]-iC.NeutralStickPos[channel]
-        dutyCycle=dutyCycle/100
-        dutyCycle=dutyCycle*degreeVal
-        dutyCycle=dutyCycle+iC.NeutralStickPos[channel]
+        dutyCycle=float64(iC.LeftStickMaxPos[channel]-iC.NeutralStickPos[channel])
+        dutyCycle=dutyCycle/100.0
+        dutyCycle=dutyCycle*degreeValf
+        dutyCycle=dutyCycle+float64(iC.NeutralStickPos[channel])
       }
     } else if iC.StickDir[channel]=="norm" {
       if iC.NeutralStickPos[channel]<iC.LeftStickMaxPos[channel] {
-        dutyCycle=iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel]
-        dutyCycle=dutyCycle/100
-        dutyCycle=dutyCycle*degreeVal
-        dutyCycle=dutyCycle+iC.NeutralStickPos[channel]
+        dutyCycle=float64(iC.NeutralStickPos[channel]-iC.LeftStickMaxPos[channel])
+        dutyCycle=dutyCycle/100.0
+        dutyCycle=dutyCycle*degreeValf
+        dutyCycle=dutyCycle+float64(iC.NeutralStickPos[channel])
       } else if iC.LeftStickMaxPos[channel]<iC.NeutralStickPos[channel] {
-        dutyCycle=iC.LeftStickMaxPos[channel]-iC.NeutralStickPos[channel]
-        dutyCycle=dutyCycle/100
-        dutyCycle=dutyCycle*degreeVal
-        dutyCycle=dutyCycle+iC.NeutralStickPos[channel]
+        dutyCycle=float64(iC.LeftStickMaxPos[channel]-iC.NeutralStickPos[channel])
+        dutyCycle=dutyCycle/100.0
+        dutyCycle=dutyCycle*degreeValf
+        dutyCycle=dutyCycle+float64(iC.NeutralStickPos[channel])
       }
     }
   } else if side == "right" {
     if iC.StickDir[channel]=="rev" {
       if(iC.NeutralStickPos[channel]>iC.RightStickMaxPos[channel]) {
-        dutyCycle=iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel]
-        dutyCycle=dutyCycle/100
-        dutyCycle=dutyCycle*degreeVal
-        dutyCycle=iC.NeutralStickPos[channel]-dutyCycle
+        dutyCycle=float64(iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel])
+        dutyCycle=dutyCycle/100.0
+        dutyCycle=dutyCycle*degreeValf
+        dutyCycle=float64(iC.NeutralStickPos[channel])-dutyCycle
       } else if(iC.RightStickMaxPos[channel]>iC.NeutralStickPos[channel]) {
-        dutyCycle=iC.RightStickMaxPos[channel]-iC.NeutralStickPos[channel]
-        dutyCycle=dutyCycle/100
-        dutyCycle=dutyCycle*degreeVal
-        dutyCycle=iC.NeutralStickPos[channel]-dutyCycle
+        dutyCycle=float64(iC.RightStickMaxPos[channel]-iC.NeutralStickPos[channel])
+        dutyCycle=dutyCycle/100.0
+        dutyCycle=dutyCycle*degreeValf
+        dutyCycle=float64(iC.NeutralStickPos[channel])-dutyCycle
       }
     } else if iC.StickDir[channel]=="norm" {
 
       if iC.NeutralStickPos[channel]<iC.RightStickMaxPos[channel] {
-        dutyCycle=iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel]
+        dutyCycle=float64(iC.NeutralStickPos[channel]-iC.RightStickMaxPos[channel])
         dutyCycle=dutyCycle/100
-        dutyCycle=dutyCycle*degreeVal
-        dutyCycle=iC.NeutralStickPos[channel]-dutyCycle
+        dutyCycle=dutyCycle*degreeValf
+        dutyCycle=float64(iC.NeutralStickPos[channel])-dutyCycle
       } else if iC.RightStickMaxPos[channel]<iC.NeutralStickPos[channel] {
-        dutyCycle=iC.RightStickMaxPos[channel]-iC.NeutralStickPos[channel]
+        dutyCycle=float64(iC.RightStickMaxPos[channel]-iC.NeutralStickPos[channel])
         dutyCycle=dutyCycle/100
-        dutyCycle=dutyCycle*degreeVal
-        dutyCycle=iC.NeutralStickPos[channel]-dutyCycle
+        dutyCycle=dutyCycle*degreeValf
+        dutyCycle=float64(iC.NeutralStickPos[channel])-dutyCycle
       }
     }
   }
-  print("calc Duty cycle: " + strconv.Itoa(dutyCycle))
-  return dutyCycle
+  println("calc Duty cycle: " + strconv.Itoa(int(dutyCycle)))
+  return int(dutyCycle)
 }
 
-func calcdutyCycleFromNeutralZero(iC *InterfaceConfig, channel int, degreeVal int) int{
-  var dutyCycle = 0
+func calcdutyCycleFromNeutralZero(iC *InterfaceConfig, channel int, degreeVal int) int {
+  degreeValf := float64(degreeVal)
+  var dutyCycle float64 = 0
   if iC.StickDir[channel]=="rev" {
     if iC.RightStickMaxPos[channel]>iC.LeftStickMaxPos[channel] {
-      dutyCycle=iC.RightStickMaxPos[channel]-iC.LeftStickMaxPos[channel]
+      dutyCycle=float64(iC.RightStickMaxPos[channel]-iC.LeftStickMaxPos[channel])
       dutyCycle=dutyCycle/100
-      dutyCycle=dutyCycle*degreeVal
-      dutyCycle=iC.LeftStickMaxPos[channel]-dutyCycle
+      dutyCycle=dutyCycle*degreeValf
+      dutyCycle=float64(iC.LeftStickMaxPos[channel])-dutyCycle
     } else if iC.RightStickMaxPos[channel]<iC.LeftStickMaxPos[channel] {
-      dutyCycle=iC.LeftStickMaxPos[channel]-iC.RightStickMaxPos[channel]
+      dutyCycle=float64(iC.LeftStickMaxPos[channel]-iC.RightStickMaxPos[channel])
       dutyCycle=dutyCycle/100
-      dutyCycle=dutyCycle*degreeVal
-      dutyCycle=iC.LeftStickMaxPos[channel]-dutyCycle
+      dutyCycle=dutyCycle*degreeValf
+      dutyCycle=float64(iC.LeftStickMaxPos[channel])-dutyCycle
     }
   } else if(iC.StickDir[channel]=="norm"){
     if iC.RightStickMaxPos[channel]<iC.LeftStickMaxPos[channel] {
-      dutyCycle=iC.LeftStickMaxPos[channel]-iC.RightStickMaxPos[channel]
+      dutyCycle=float64(iC.LeftStickMaxPos[channel]-iC.RightStickMaxPos[channel])
       dutyCycle=dutyCycle/100
-      dutyCycle=dutyCycle*degreeVal
-      dutyCycle=iC.RightStickMaxPos[channel]+dutyCycle
+      dutyCycle=dutyCycle*degreeValf
+      dutyCycle=float64(iC.RightStickMaxPos[channel])+dutyCycle
     } else if iC.RightStickMaxPos[channel]>iC.LeftStickMaxPos[channel] {
-      dutyCycle=iC.RightStickMaxPos[channel]-iC.LeftStickMaxPos[channel]
+      dutyCycle=float64(iC.RightStickMaxPos[channel]-iC.LeftStickMaxPos[channel])
       dutyCycle=dutyCycle/100
-      dutyCycle=dutyCycle*degreeVal
-      dutyCycle=iC.RightStickMaxPos[channel]-dutyCycle
+      dutyCycle=dutyCycle*degreeValf
+      dutyCycle=float64(iC.RightStickMaxPos[channel])-dutyCycle
     }
   }
-  print("calc Duty cycle: " + strconv.Itoa(dutyCycle))
-  return dutyCycle
+  println("calc Duty cycle: " + strconv.Itoa(int(dutyCycle)))
+  return int(dutyCycle)
 }

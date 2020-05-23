@@ -26,7 +26,7 @@ func main() {
   // key: channel, value: stick max pos
   interfaceConf.LeftStickMaxPos[naza.Achannel] = 400
   interfaceConf.NeutralStickPos[naza.Achannel] = 315
-  interfaceConf.RightStickMaxPos[naza.Achannel] = 320
+  interfaceConf.RightStickMaxPos[naza.Achannel] = 220
 
   interfaceConf.LeftStickMaxPos[naza.Echannel] = 400
   interfaceConf.NeutralStickPos[naza.Echannel] = 315
